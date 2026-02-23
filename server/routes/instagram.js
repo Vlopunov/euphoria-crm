@@ -181,7 +181,8 @@ async function processIncomingMessage(connection, senderId, messageId, messageTe
 // ==========================================
 router.get('/auth', authenticate, (req, res) => {
   const appId = process.env.META_APP_ID;
-  const redirectUri = process.env.META_REDIRECT_URI || 'http://localhost:3001/api/instagram/callback';
+  const redirectUri = process.env.META_REDIRECT_URI || (process.env.RENDER ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}/api/instagram/callback` : 'http://localhost:3001/api/instagram/callback');
+  console.log('[Instagram Auth] Using redirect_uri:', redirectUri);
 
   const url = `https://www.facebook.com/v21.0/dialog/oauth?` +
     `client_id=${appId}` +
@@ -198,7 +199,7 @@ router.get('/auth', authenticate, (req, res) => {
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
   const userId = Number(state);
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = process.env.FRONTEND_URL || (process.env.RENDER ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : 'http://localhost:5173');
 
   if (!code || !userId) {
     return res.redirect(`${frontendUrl}/settings/instagram?error=no_code`);
@@ -207,7 +208,7 @@ router.get('/callback', async (req, res) => {
   try {
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
-    const redirectUri = process.env.META_REDIRECT_URI || 'http://localhost:3001/api/instagram/callback';
+    const redirectUri = process.env.META_REDIRECT_URI || (process.env.RENDER ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}/api/instagram/callback` : 'http://localhost:3001/api/instagram/callback');
 
     // 1. Exchange code for short-lived token
     const tokenData = await metaApi(
