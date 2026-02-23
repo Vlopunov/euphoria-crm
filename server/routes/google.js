@@ -60,6 +60,10 @@ async function getAuthenticatedClient(userId) {
 // GET /api/google/auth — Start OAuth flow
 // ==========================================
 router.get('/auth', authenticate, (req, res) => {
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/google/callback';
+  console.log('[Google Auth] Using redirect_uri:', redirectUri);
+  console.log('[Google Auth] GOOGLE_CLIENT_ID set:', !!process.env.GOOGLE_CLIENT_ID);
+
   const oauth2 = getOAuth2Client();
   const url = oauth2.generateAuthUrl({
     access_type: 'offline',
@@ -68,7 +72,8 @@ router.get('/auth', authenticate, (req, res) => {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
     ],
-    state: String(req.user.id), // pass user ID through state param
+    state: String(req.user.id),
+    redirect_uri: redirectUri,
   });
   res.json({ url });
 });
@@ -79,7 +84,9 @@ router.get('/auth', authenticate, (req, res) => {
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
   const userId = Number(state);
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  // On Render, frontend is served from same origin as API
+  const frontendUrl = process.env.FRONTEND_URL || (process.env.RENDER ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : 'http://localhost:5173');
+  console.log('[Google Callback] Redirecting to frontend:', frontendUrl);
 
   if (!code || !userId) {
     return res.status(400).send('Ошибка: отсутствует код авторизации');
