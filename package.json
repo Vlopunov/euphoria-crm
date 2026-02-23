@@ -1,0 +1,28 @@
+{
+  "name": "euphoria-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CRM + Booking + Finance MVP for event space Эйфория",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build",
+    "start": "node server/index.js",
+    "install:all": "npm install && cd client && npm install",
+    "seed": "node server/db/seed.js",
+    "setup": "npm run install:all && npm run seed"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "concurrently": "^9.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "googleapis": "^171.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "pg": "^8.18.0",
+    "uuid": "^11.0.3"
+  }
+}
