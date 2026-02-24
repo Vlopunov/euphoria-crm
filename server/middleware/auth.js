@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'euphoria-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'euphoria-secret-' + (process.env.NODE_ENV || 'dev');
 
 function authenticate(req, res, next) {
   const header = req.headers.authorization;

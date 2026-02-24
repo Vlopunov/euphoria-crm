@@ -1,7 +1,7 @@
 const express = require('express');
 const { query, queryOne, queryAll } = require('../db/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { calculatePrice, getFirstHourRate } = require('../utils/pricing');
+const { calculatePrice, getFirstHourRate, toDateString } = require('../utils/pricing');
 
 const router = express.Router();
 router.use(authenticate);
@@ -58,6 +58,14 @@ async function enrichBooking(booking) {
   };
 }
 
+// Safe date string from pg Date or string
+function safeDateStr(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d.split('T')[0];
+  // pg Date object — use toDateString from pricing.js
+  return toDateString(d);
+}
+
 // GET all bookings
 router.get('/', async (req, res) => {
   try {
@@ -111,7 +119,7 @@ router.get('/calendar', async (req, res) => {
     sql += ` ORDER BY b.booking_date, b.start_time`;
     const bookings = await queryAll(sql, params);
     const events = bookings.map(b => {
-      const dateStr = typeof b.booking_date === 'string' ? b.booking_date : b.booking_date.toISOString().split('T')[0];
+      const dateStr = safeDateStr(b.booking_date);
       return {
         id: b.id,
         title: `${b.client_name} — ${b.event_type || 'Мероприятие'}`,
@@ -142,6 +150,16 @@ function getStatusColor(status) {
   return colors[status] || '#6b7280';
 }
 
+// GET calculate price preview (MUST be before /:id to avoid shadowing)
+router.get('/calculate-price', authorize('owner', 'admin', 'manager'), (req, res) => {
+  const { booking_date, start_time, end_time } = req.query;
+  if (!booking_date || !start_time || !end_time) {
+    return res.status(400).json({ error: 'Нужны booking_date, start_time, end_time' });
+  }
+  const pricing = calculatePrice(booking_date, start_time, end_time);
+  res.json(pricing);
+});
+
 // GET single booking (full details)
 router.get('/:id', async (req, res) => {
   try {
@@ -152,16 +170,6 @@ router.get('/:id', async (req, res) => {
     console.error('GET /bookings/:id error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
-});
-
-// GET calculate price preview (для предварительного расчёта)
-router.get('/calculate-price', authorize('owner', 'admin', 'manager'), (req, res) => {
-  const { booking_date, start_time, end_time } = req.query;
-  if (!booking_date || !start_time || !end_time) {
-    return res.status(400).json({ error: 'Нужны booking_date, start_time, end_time' });
-  }
-  const pricing = calculatePrice(booking_date, start_time, end_time);
-  res.json(pricing);
 });
 
 // POST create booking
@@ -242,13 +250,17 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
     const rental_cost = pricing.rental_cost;
     const deposit_amount = custom_deposit ?? existing.deposit_amount;
 
+    // Calculate total_amount including existing addons
+    const addonsRow = await queryOne(`SELECT COALESCE(SUM(sale_price * quantity),0) as s FROM booking_add_ons WHERE booking_id = $1`, [req.params.id]);
+    const total_amount = rental_cost + addonsRow.s;
+
     await query(`
       UPDATE bookings SET client_id=$1, booking_date=$2, start_time=$3, end_time=$4, hours=$5, guest_count=$6, event_type=$7, hourly_rate=$8, rental_cost=$9, deposit_amount=$10, total_amount=$11, status=$12, comment=$13, updated_at=NOW()
       WHERE id = $14
     `, [
       client_id || existing.client_id, bDate, sTime, eTime, hours,
       guest_count ?? existing.guest_count, event_type ?? existing.event_type,
-      rate, rental_cost, deposit_amount, rental_cost,
+      rate, rental_cost, deposit_amount, total_amount,
       status || existing.status, comment ?? existing.comment, req.params.id
     ]);
 

@@ -1,13 +1,14 @@
 const express = require('express');
 const { queryOne, queryAll } = require('../db/database');
 const { authenticate } = require('../middleware/auth');
+const { toMinskDate } = require('../utils/dates');
 
 const router = express.Router();
 router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toMinskDate();
     const weekStart = getWeekStart(today);
     const weekEnd = getWeekEnd(today);
     const monthStart = today.slice(0, 7) + '-01';
@@ -155,8 +156,8 @@ router.get('/', async (req, res) => {
 router.get('/reports', async (req, res) => {
   try {
     const { date_from, date_to } = req.query;
-    const from = date_from || new Date().toISOString().slice(0, 7) + '-01';
-    const to = date_to || new Date().toISOString().split('T')[0];
+    const from = date_from || toMinskDate().slice(0, 7) + '-01';
+    const to = date_to || toMinskDate();
 
     // Revenue by period (daily)
     const dailyRevenue = await queryAll(`
@@ -232,28 +233,32 @@ router.get('/reports', async (req, res) => {
   }
 });
 
+// Date helpers — safe for UTC-based date strings (YYYY-MM-DD)
 function getWeekStart(dateStr) {
-  const d = new Date(dateStr);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function getWeekEnd(dateStr) {
-  const start = new Date(getWeekStart(dateStr));
-  start.setDate(start.getDate() + 6);
-  return start.toISOString().split('T')[0];
+  const [y, m, d] = getWeekStart(dateStr).split('-').map(Number);
+  const date = new Date(y, m - 1, d + 6);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function getMonthEnd(dateStr) {
-  const [y, m] = dateStr.split('-');
-  return new Date(Number(y), Number(m), 0).toISOString().split('T')[0];
+  const [y, m] = dateStr.split('-').map(Number);
+  const date = new Date(y, m, 0);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function addDays(dateStr, n) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d + n);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 module.exports = router;

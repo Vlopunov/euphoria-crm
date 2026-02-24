@@ -12,6 +12,7 @@ import {
   SOURCE_LABELS,
   isToday,
   isTomorrow,
+  toLocalDateStr,
 } from '../components/helpers';
 
 export default function Dashboard() {
@@ -195,13 +196,13 @@ export default function Dashboard() {
                   >
                     <div className="flex-shrink-0 text-center w-12">
                       <p className={`text-xs font-semibold ${
-                        isToday(event.event_date)
+                        isToday(event.booking_date)
                           ? 'text-primary-600'
-                          : isTomorrow(event.event_date)
+                          : isTomorrow(event.booking_date)
                             ? 'text-orange-500'
                             : 'text-gray-500'
                       }`}>
-                        {getDateLabel(event.event_date)}
+                        {getDateLabel(event.booking_date)}
                       </p>
                       {event.start_time && (
                         <p className="text-xs text-gray-400 mt-0.5">
@@ -244,7 +245,7 @@ export default function Dashboard() {
             ) : (
               pendingTasks.map(task => {
                 const typeLabel = TASK_TYPE_LABELS[task.task_type] || task.task_type;
-                const isOverdue = task.due_date && task.due_date < new Date().toISOString().split('T')[0];
+                const isOverdue = task.due_date && task.due_date < toLocalDateStr();
                 return (
                   <div
                     key={task.id}

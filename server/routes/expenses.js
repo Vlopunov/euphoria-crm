@@ -1,6 +1,7 @@
 const express = require('express');
 const { query, queryOne, queryAll } = require('../db/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { toMinskDate } = require('../utils/dates');
 
 const router = express.Router();
 router.use(authenticate);
@@ -46,10 +47,11 @@ router.post('/', authorize('owner', 'admin'), async (req, res) => {
   try {
     const { expense_date, category_id, amount, payment_method, booking_id, comment } = req.body;
     if (!category_id || !amount) return res.status(400).json({ error: 'Категория и сумма обязательны' });
+    if (Number(amount) <= 0) return res.status(400).json({ error: 'Сумма должна быть положительной' });
     const result = await query(`
       INSERT INTO expenses (expense_date, category_id, amount, payment_method, booking_id, comment, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-    `, [expense_date || new Date().toISOString().split('T')[0], category_id, amount, payment_method || null, booking_id || null, comment || null, req.user.id]);
+    `, [expense_date || toMinskDate(), category_id, amount, payment_method || null, booking_id || null, comment || null, req.user.id]);
     const expense = await queryOne(`
       SELECT e.*, ec.name as category_name FROM expenses e JOIN expense_categories ec ON e.category_id = ec.id WHERE e.id = $1
     `, [result.rows[0].id]);
@@ -60,14 +62,25 @@ router.post('/', authorize('owner', 'admin'), async (req, res) => {
   }
 });
 
-// PUT update expense
+// PUT update expense (merge with existing to prevent null overwrites)
 router.put('/:id', authorize('owner', 'admin'), async (req, res) => {
   try {
+    const existing = await queryOne(`SELECT * FROM expenses WHERE id = $1`, [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Расход не найден' });
+
     const { expense_date, category_id, amount, payment_method, booking_id, comment } = req.body;
     await query(`
       UPDATE expenses SET expense_date=$1, category_id=$2, amount=$3, payment_method=$4, booking_id=$5, comment=$6
       WHERE id = $7
-    `, [expense_date, category_id, amount, payment_method || null, booking_id || null, comment || null, req.params.id]);
+    `, [
+      expense_date ?? existing.expense_date,
+      category_id ?? existing.category_id,
+      amount ?? existing.amount,
+      payment_method !== undefined ? (payment_method || null) : existing.payment_method,
+      booking_id !== undefined ? (booking_id || null) : existing.booking_id,
+      comment !== undefined ? (comment || null) : existing.comment,
+      req.params.id
+    ]);
     const expense = await queryOne(`
       SELECT e.*, ec.name as category_name FROM expenses e JOIN expense_categories ec ON e.category_id = ec.id WHERE e.id = $1
     `, [req.params.id]);

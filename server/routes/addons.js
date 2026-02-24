@@ -51,11 +51,23 @@ router.post('/services', authorize('owner', 'admin'), async (req, res) => {
 
 router.put('/services/:id', authorize('owner', 'admin'), async (req, res) => {
   try {
+    const existing = await queryOne(`SELECT * FROM add_on_services WHERE id = $1`, [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Услуга не найдена' });
+
     const { category_id, name, price, cost_price, executor_type, is_active, comment } = req.body;
     await query(`
       UPDATE add_on_services SET category_id=$1, name=$2, price=$3, cost_price=$4, executor_type=$5, is_active=$6, comment=$7
       WHERE id = $8
-    `, [category_id, name, price, cost_price || 0, executor_type || null, is_active ?? 1, comment || null, req.params.id]);
+    `, [
+      category_id ?? existing.category_id,
+      name ?? existing.name,
+      price ?? existing.price,
+      cost_price !== undefined ? (cost_price || 0) : existing.cost_price,
+      executor_type !== undefined ? (executor_type || null) : existing.executor_type,
+      is_active ?? existing.is_active,
+      comment !== undefined ? (comment || null) : existing.comment,
+      req.params.id
+    ]);
     const service = await queryOne(`SELECT * FROM add_on_services WHERE id = $1`, [req.params.id]);
     res.json(service);
   } catch (err) {

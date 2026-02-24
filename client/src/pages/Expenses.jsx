@@ -5,8 +5,13 @@ import { Card, PageHeader, Button, Input, Select, Textarea, Modal, EmptyState, L
 import { formatMoney, formatDate, PAYMENT_METHOD_OPTIONS, PAYMENT_METHOD_LABELS } from '../components/helpers';
 import { Plus, Trash2, Receipt } from 'lucide-react';
 
+function localDateStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 const EMPTY_FORM = {
-  expense_date: new Date().toISOString().split('T')[0],
+  expense_date: localDateStr(),
   category_id: '',
   amount: '',
   payment_method: 'cash',

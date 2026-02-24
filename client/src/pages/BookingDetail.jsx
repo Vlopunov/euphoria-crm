@@ -23,7 +23,11 @@ const PAYMENT_TYPE_OPTIONS = [
 const STATUS_UPDATE_OPTIONS = BOOKING_STATUS_OPTIONS.filter(o => o.value !== '');
 
 const EMPTY_ADDON_FORM = { service_id: '', quantity: 1, sale_price: '', cost_price: '' };
-const EMPTY_PAYMENT_FORM = { amount: '', payment_type: 'deposit', payment_method: 'cash', payment_date: new Date().toISOString().split('T')[0], comment: '' };
+function localDateStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+const EMPTY_PAYMENT_FORM = { amount: '', payment_type: 'deposit', payment_method: 'cash', payment_date: localDateStr(), comment: '' };
 const EMPTY_TASK_FORM = { title: '', due_date: '', booking_id: '' };
 
 export default function BookingDetail() {
@@ -140,7 +144,7 @@ export default function BookingDetail() {
   const openPaymentModal = (prefillType) => {
     const form = {
       ...EMPTY_PAYMENT_FORM,
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: localDateStr(),
     };
     if (prefillType === 'deposit' && booking) {
       form.payment_type = 'deposit';

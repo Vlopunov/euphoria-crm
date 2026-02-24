@@ -1,6 +1,7 @@
 const express = require('express');
 const { query, queryOne, queryAll } = require('../db/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { toMinskDate } = require('../utils/dates');
 
 const router = express.Router();
 router.use(authenticate);
@@ -49,6 +50,9 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
     if (!booking_id || !amount || !payment_type) {
       return res.status(400).json({ error: 'Бронь, сумма и тип платежа обязательны' });
     }
+    if (Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Сумма должна быть положительной' });
+    }
 
     const booking = await queryOne(`SELECT * FROM bookings WHERE id = $1`, [booking_id]);
     if (!booking) return res.status(404).json({ error: 'Бронь не найдена' });
@@ -57,24 +61,12 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
       INSERT INTO payments (booking_id, payment_date, amount, payment_type, payment_method, comment, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [booking_id, payment_date || new Date().toISOString().split('T')[0], amount, payment_type, payment_method || null, comment || null, req.user.id]);
+    `, [booking_id, payment_date || toMinskDate(), amount, payment_type, payment_method || null, comment || null, req.user.id]);
 
     const paymentId = result.rows[0].id;
 
     // Auto-update booking status based on total paid
-    const addonsRow = await queryOne(`SELECT COALESCE(SUM(sale_price * quantity),0) as s FROM booking_add_ons WHERE booking_id = $1`, [booking_id]);
-    const addons_total = addonsRow.s;
-    const grand_total = booking.rental_cost + addons_total;
-    const paidRow = await queryOne(`SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE booking_id = $1`, [booking_id]);
-    const total_paid = paidRow.s;
-
-    if (total_paid >= grand_total && booking.status !== 'completed') {
-      await query(`UPDATE bookings SET status = 'fully_paid', updated_at = NOW() WHERE id = $1`, [booking_id]);
-    } else if (payment_type === 'deposit' && booking.status === 'no_deposit') {
-      await query(`UPDATE bookings SET status = 'deposit_paid', updated_at = NOW() WHERE id = $1`, [booking_id]);
-    } else if (payment_type === 'deposit' && booking.status === 'preliminary') {
-      await query(`UPDATE bookings SET status = 'deposit_paid', updated_at = NOW() WHERE id = $1`, [booking_id]);
-    }
+    await recalcBookingStatus(booking_id);
 
     // Mark deposit tasks as completed
     if (payment_type === 'deposit') {
@@ -89,15 +81,48 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
   }
 });
 
-// DELETE payment (owner only)
+// DELETE payment (owner only) — recalculate booking status after
 router.delete('/:id', authorize('owner'), async (req, res) => {
   try {
+    const payment = await queryOne(`SELECT * FROM payments WHERE id = $1`, [req.params.id]);
+    if (!payment) return res.status(404).json({ error: 'Платёж не найден' });
+
     await query(`DELETE FROM payments WHERE id = $1`, [req.params.id]);
+
+    // Recalculate booking status after deletion
+    if (payment.booking_id) {
+      await recalcBookingStatus(payment.booking_id);
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE /payments/:id error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
+// Recalculate booking payment status
+async function recalcBookingStatus(bookingId) {
+  const booking = await queryOne(`SELECT * FROM bookings WHERE id = $1`, [bookingId]);
+  if (!booking || booking.status === 'completed' || booking.status === 'cancelled') return;
+
+  const addonsRow = await queryOne(`SELECT COALESCE(SUM(sale_price * quantity),0) as s FROM booking_add_ons WHERE booking_id = $1`, [bookingId]);
+  const grand_total = booking.rental_cost + addonsRow.s;
+  const paidRow = await queryOne(`SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE booking_id = $1`, [bookingId]);
+  const total_paid = paidRow.s;
+
+  let newStatus = booking.status;
+  if (total_paid >= grand_total) {
+    newStatus = 'fully_paid';
+  } else if (total_paid > 0) {
+    newStatus = 'deposit_paid';
+  } else if (total_paid === 0 && (booking.status === 'fully_paid' || booking.status === 'deposit_paid')) {
+    newStatus = 'no_deposit';
+  }
+
+  if (newStatus !== booking.status) {
+    await query(`UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2`, [newStatus, bookingId]);
+  }
+}
 
 module.exports = router;

@@ -80,14 +80,25 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
   }
 });
 
-// PUT update client
+// PUT update client (merge with existing to prevent null overwrites)
 router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
   try {
+    const existing = await queryOne('SELECT * FROM clients WHERE id = $1', [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Клиент не найден' });
+
     const { name, phone, telegram, instagram, source, comment } = req.body;
     await query(`
       UPDATE clients SET name=$1, phone=$2, telegram=$3, instagram=$4, source=$5, comment=$6, updated_at=NOW()
       WHERE id = $7
-    `, [name, phone || null, telegram || null, instagram || null, source || null, comment || null, req.params.id]);
+    `, [
+      name ?? existing.name,
+      phone !== undefined ? (phone || null) : existing.phone,
+      telegram !== undefined ? (telegram || null) : existing.telegram,
+      instagram !== undefined ? (instagram || null) : existing.instagram,
+      source !== undefined ? (source || null) : existing.source,
+      comment !== undefined ? (comment || null) : existing.comment,
+      req.params.id
+    ]);
     const client = await queryOne('SELECT * FROM clients WHERE id = $1', [req.params.id]);
     res.json(client);
   } catch (err) {

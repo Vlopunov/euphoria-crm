@@ -119,14 +119,21 @@ export function formatDateShort(d) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
+export function toLocalDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function isToday(d) {
   const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
-  return dateStr === new Date().toISOString().split('T')[0];
+  return dateStr === toLocalDateStr();
 }
 
 export function isTomorrow(d) {
   const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
   const t = new Date();
   t.setDate(t.getDate() + 1);
-  return dateStr === t.toISOString().split('T')[0];
+  return dateStr === toLocalDateStr(t);
 }

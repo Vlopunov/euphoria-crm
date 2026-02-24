@@ -227,7 +227,7 @@ export default function CalendarPage() {
         action={
           <Button onClick={() => {
             const now = new Date();
-            const date = now.toISOString().split('T')[0];
+            const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             setForm({
               client_id: '',
               booking_date: date,
