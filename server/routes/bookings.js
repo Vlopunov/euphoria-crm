@@ -1,6 +1,7 @@
 const express = require('express');
 const { query, queryOne, queryAll } = require('../db/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { calculatePrice, getFirstHourRate } = require('../utils/pricing');
 
 const router = express.Router();
 router.use(authenticate);
@@ -153,6 +154,16 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET calculate price preview (для предварительного расчёта)
+router.get('/calculate-price', authorize('owner', 'admin', 'manager'), (req, res) => {
+  const { booking_date, start_time, end_time } = req.query;
+  if (!booking_date || !start_time || !end_time) {
+    return res.status(400).json({ error: 'Нужны booking_date, start_time, end_time' });
+  }
+  const pricing = calculatePrice(booking_date, start_time, end_time);
+  res.json(pricing);
+});
+
 // POST create booking
 router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
   try {
@@ -160,11 +171,9 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
     if (!client_id || !booking_date || !start_time || !end_time) {
       return res.status(400).json({ error: 'Клиент, дата и время обязательны' });
     }
-    // Calculate hours (поддержка ночных мероприятий через полночь)
-    const [sh, sm] = start_time.split(':').map(Number);
-    const [eh, em] = end_time.split(':').map(Number);
-    let hours = (eh * 60 + em - sh * 60 - sm) / 60;
-    if (hours <= 0) hours += 24; // ночное мероприятие (через полночь)
+    // Авто-расчёт цены по тарифным зонам (день недели + время)
+    const pricing = calculatePrice(booking_date, start_time, end_time);
+    const hours = pricing.hours;
 
     // ЗАЩИТА ОТ ДВОЙНОГО БРОНИРОВАНИЯ
     const overlaps = await checkOverlap(booking_date, start_time, end_time);
@@ -175,9 +184,9 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
       });
     }
 
-    const rate = hourly_rate || 35;
-    const rental_cost = rate * hours;
-    const deposit_amount = custom_deposit ?? rate; // задаток = кастомная сумма или стоимость 1 часа
+    const rate = pricing.hourly_rate;
+    const rental_cost = pricing.rental_cost;
+    const deposit_amount = custom_deposit ?? getFirstHourRate(booking_date, start_time);
 
     const result = await query(`
       INSERT INTO bookings (client_id, lead_id, booking_date, start_time, end_time, hours, guest_count, event_type, hourly_rate, rental_cost, deposit_amount, total_amount, status, comment, created_by)
@@ -217,11 +226,9 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
     const sTime = start_time || existing.start_time;
     const eTime = end_time || existing.end_time;
 
-    // Recalculate hours (поддержка ночных мероприятий через полночь)
-    const [sh, sm] = sTime.split(':').map(Number);
-    const [eh, em] = eTime.split(':').map(Number);
-    let hours = (eh * 60 + em - sh * 60 - sm) / 60;
-    if (hours <= 0) hours += 24;
+    // Авто-расчёт цены по тарифным зонам (день недели + время)
+    const pricing = calculatePrice(bDate, sTime, eTime);
+    const hours = pricing.hours;
 
     // Check overlap excluding self
     if (booking_date || start_time || end_time) {
@@ -231,9 +238,9 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
       }
     }
 
-    const rate = hourly_rate || existing.hourly_rate;
-    const rental_cost = rate * hours;
-    const deposit_amount = custom_deposit ?? existing.deposit_amount ?? rate;
+    const rate = pricing.hourly_rate;
+    const rental_cost = pricing.rental_cost;
+    const deposit_amount = custom_deposit ?? existing.deposit_amount;
 
     await query(`
       UPDATE bookings SET client_id=$1, booking_date=$2, start_time=$3, end_time=$4, hours=$5, guest_count=$6, event_type=$7, hourly_rate=$8, rental_cost=$9, deposit_amount=$10, total_amount=$11, status=$12, comment=$13, updated_at=NOW()
