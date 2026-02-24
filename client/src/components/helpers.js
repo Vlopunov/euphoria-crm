@@ -106,22 +106,27 @@ export function formatMoney(v) {
 
 export function formatDate(d) {
   if (!d) return '—';
-  const date = new Date(d + 'T00:00:00');
+  // Поддержка и "2026-02-01" и "2026-02-01T00:00:00.000Z"
+  const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
+  const date = new Date(dateStr + 'T00:00:00');
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatDateShort(d) {
   if (!d) return '—';
-  const date = new Date(d + 'T00:00:00');
+  const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
+  const date = new Date(dateStr + 'T00:00:00');
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 export function isToday(d) {
-  return d === new Date().toISOString().split('T')[0];
+  const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
+  return dateStr === new Date().toISOString().split('T')[0];
 }
 
 export function isTomorrow(d) {
+  const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
   const t = new Date();
   t.setDate(t.getDate() + 1);
-  return d === t.toISOString().split('T')[0];
+  return dateStr === t.toISOString().split('T')[0];
 }
