@@ -39,6 +39,7 @@ app.use('/api/google', googleRoutes);
 app.use('/api/instagram', require('./routes/instagram'));
 const telegramRoutes = require('./routes/telegram');
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/tilda', require('./routes/tilda'));
 
 // Users endpoint (for selects)
 const { queryAll } = require('./db/database');

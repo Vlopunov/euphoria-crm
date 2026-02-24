@@ -17,6 +17,7 @@ import GoogleSettings from './pages/GoogleSettings';
 import InstagramSettings from './pages/InstagramSettings';
 import InstagramChat from './pages/InstagramChat';
 import TelegramSettings from './pages/TelegramSettings';
+import TildaSettings from './pages/TildaSettings';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
       <Route path="/settings/google" element={<ProtectedRoute><GoogleSettings /></ProtectedRoute>} />
       <Route path="/settings/instagram" element={<ProtectedRoute><InstagramSettings /></ProtectedRoute>} />
       <Route path="/settings/telegram" element={<ProtectedRoute><TelegramSettings /></ProtectedRoute>} />
+      <Route path="/settings/tilda" element={<ProtectedRoute><TildaSettings /></ProtectedRoute>} />
       <Route path="/instagram" element={<ProtectedRoute><InstagramChat /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

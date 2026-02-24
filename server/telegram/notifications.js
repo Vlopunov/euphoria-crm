@@ -242,12 +242,33 @@ async function notifyUpcomingEvents() {
   }
 }
 
+// ==========================================
+// Notification: New Tilda Lead (from website)
+// ==========================================
+async function notifyNewTildaLead(data) {
+  try {
+    const text =
+      `🌐 <b>Заявка с сайта #${data.id}</b>\n\n` +
+      `👤 ${escapeHtml(data.clientName || '—')}` +
+      (data.phone ? ` • ${escapeHtml(data.phone)}` : '') + '\n' +
+      (data.email ? `📧 ${escapeHtml(data.email)}\n` : '') +
+      (data.formName ? `📋 Форма: ${escapeHtml(data.formName)}\n` : '') +
+      (data.comment ? `💬 ${escapeHtml(data.comment.substring(0, 200))}\n` : '') +
+      `📱 Источник: Tilda (сайт)`;
+
+    await broadcastToStaff(text);
+  } catch (err) {
+    console.error('[TG Notify] notifyNewTildaLead error:', err.message);
+  }
+}
+
 module.exports = {
   safeSend,
   broadcastToStaff,
   notifyNewBooking,
   notifyNewLead,
   notifyNewTelegramLead,
+  notifyNewTildaLead,
   notifyPaymentReceived,
   notifyMorningBriefing,
   notifyUpcomingEvents,

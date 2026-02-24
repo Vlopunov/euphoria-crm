@@ -111,4 +111,12 @@ export const api = {
   telegramUpdateWelcome: (welcome_message) => request('/telegram/welcome', { method: 'PUT', body: JSON.stringify({ welcome_message }) }),
   telegramDisconnect: () => request('/telegram/disconnect', { method: 'DELETE' }),
   telegramConversations: () => request('/telegram/conversations'),
+
+  // Tilda Website
+  tildaStatus: () => request('/tilda/status'),
+  tildaSetup: () => request('/tilda/setup', { method: 'POST' }),
+  tildaUpdateMapping: (field_mapping) => request('/tilda/mapping', { method: 'PUT', body: JSON.stringify({ field_mapping }) }),
+  tildaRegenerateKey: () => request('/tilda/regenerate-key', { method: 'POST' }),
+  tildaDisconnect: () => request('/tilda/disconnect', { method: 'DELETE' }),
+  tildaSubmissions: (params) => request(`/tilda/submissions?${new URLSearchParams(params || {})}`),
 };

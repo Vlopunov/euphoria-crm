@@ -264,6 +264,31 @@ const createSchema = async (pool) => {
     EXCEPTION WHEN duplicate_column THEN NULL;
     END $$;
 
+    -- TILDA CONFIG (website form integration)
+    CREATE TABLE IF NOT EXISTS tilda_config (
+      id SERIAL PRIMARY KEY,
+      api_key TEXT NOT NULL,
+      field_mapping JSONB DEFAULT '{"name":"Name","phone":"Phone","email":"Email","comment":"comment"}',
+      is_active INTEGER DEFAULT 1,
+      created_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- TILDA SUBMISSIONS (webhook log + idempotency)
+    CREATE TABLE IF NOT EXISTS tilda_submissions (
+      id SERIAL PRIMARY KEY,
+      tranid TEXT UNIQUE,
+      formid TEXT,
+      formname TEXT,
+      raw_data JSONB NOT NULL,
+      client_id INTEGER REFERENCES clients(id),
+      lead_id INTEGER REFERENCES leads(id),
+      status TEXT DEFAULT 'processed' CHECK(status IN ('processed','duplicate','error')),
+      error_message TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     -- AUDIT LOG
     CREATE TABLE IF NOT EXISTS audit_log (
       id SERIAL PRIMARY KEY,
@@ -296,6 +321,8 @@ const createSchema = async (pool) => {
     CREATE INDEX IF NOT EXISTS idx_tg_conversations_client ON telegram_conversations(client_id);
     CREATE INDEX IF NOT EXISTS idx_tg_messages_conversation ON telegram_messages(conversation_id);
     CREATE INDEX IF NOT EXISTS idx_users_telegram_chat ON users(telegram_chat_id);
+    CREATE INDEX IF NOT EXISTS idx_tilda_submissions_tranid ON tilda_submissions(tranid);
+    CREATE INDEX IF NOT EXISTS idx_tilda_submissions_created ON tilda_submissions(created_at);
   `);
 };
 
