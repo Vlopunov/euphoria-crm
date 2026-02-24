@@ -160,11 +160,11 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
     if (!client_id || !booking_date || !start_time || !end_time) {
       return res.status(400).json({ error: 'Клиент, дата и время обязательны' });
     }
-    // Calculate hours
+    // Calculate hours (поддержка ночных мероприятий через полночь)
     const [sh, sm] = start_time.split(':').map(Number);
     const [eh, em] = end_time.split(':').map(Number);
-    const hours = (eh * 60 + em - sh * 60 - sm) / 60;
-    if (hours <= 0) return res.status(400).json({ error: 'Время окончания должно быть позже начала' });
+    let hours = (eh * 60 + em - sh * 60 - sm) / 60;
+    if (hours <= 0) hours += 24; // ночное мероприятие (через полночь)
 
     // ЗАЩИТА ОТ ДВОЙНОГО БРОНИРОВАНИЯ
     const overlaps = await checkOverlap(booking_date, start_time, end_time);
@@ -217,10 +217,11 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
     const sTime = start_time || existing.start_time;
     const eTime = end_time || existing.end_time;
 
-    // Recalculate hours
+    // Recalculate hours (поддержка ночных мероприятий через полночь)
     const [sh, sm] = sTime.split(':').map(Number);
     const [eh, em] = eTime.split(':').map(Number);
-    const hours = (eh * 60 + em - sh * 60 - sm) / 60;
+    let hours = (eh * 60 + em - sh * 60 - sm) / 60;
+    if (hours <= 0) hours += 24;
 
     // Check overlap excluding self
     if (booking_date || start_time || end_time) {
