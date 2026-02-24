@@ -37,6 +37,8 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 const googleRoutes = require('./routes/google');
 app.use('/api/google', googleRoutes);
 app.use('/api/instagram', require('./routes/instagram'));
+const telegramRoutes = require('./routes/telegram');
+app.use('/api/telegram', telegramRoutes);
 
 // Users endpoint (for selects)
 const { queryAll } = require('./db/database');
@@ -94,6 +96,11 @@ async function start() {
     console.log('✅ Seeded users and categories');
   }
 
+  // Initialize Telegram bot (if configured)
+  await telegramRoutes.initBot().catch(err => {
+    console.error('[TG] Bot init error (non-fatal):', err.message);
+  });
+
   app.listen(PORT, () => {
     console.log(`Сервер Эйфория запущен на http://localhost:${PORT}`);
 
@@ -105,6 +112,23 @@ async function start() {
       timezone: 'Europe/Minsk',
     });
     console.log('⏰ Авто-синхронизация Google Calendar: 08:00 и 20:00 (Минск)');
+
+    // Telegram cron: утренний брифинг 09:00 Минск
+    cron.schedule('0 9 * * *', () => {
+      const { notifyMorningBriefing } = require('./telegram/notifications');
+      notifyMorningBriefing().catch(err => {
+        console.error('[CRON] Ошибка утреннего брифинга:', err.message);
+      });
+    }, { timezone: 'Europe/Minsk' });
+
+    // Telegram cron: завтрашние мероприятия 20:00 Минск
+    cron.schedule('0 20 * * *', () => {
+      const { notifyUpcomingEvents } = require('./telegram/notifications');
+      notifyUpcomingEvents().catch(err => {
+        console.error('[CRON] Ошибка уведомления о завтрашних событиях:', err.message);
+      });
+    }, { timezone: 'Europe/Minsk' });
+    console.log('🤖 Telegram cron: 09:00 брифинг, 20:00 завтрашние события (Минск)');
   });
 }
 

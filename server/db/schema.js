@@ -221,6 +221,49 @@ const createSchema = async (pool) => {
       created_at TIMESTAMP DEFAULT NOW()
     );
 
+    -- TELEGRAM BOT CONFIG
+    CREATE TABLE IF NOT EXISTS telegram_bot_config (
+      id SERIAL PRIMARY KEY,
+      bot_token TEXT NOT NULL,
+      bot_username TEXT,
+      webhook_url TEXT,
+      welcome_message TEXT DEFAULT 'Добро пожаловать в Эйфория Room! 🎉\n\nМы — уютное пространство для ваших мероприятий в Минске.\n\nВыберите, что вас интересует:',
+      is_active INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- TELEGRAM CONVERSATIONS
+    CREATE TABLE IF NOT EXISTS telegram_conversations (
+      id SERIAL PRIMARY KEY,
+      chat_id BIGINT NOT NULL UNIQUE,
+      username TEXT,
+      first_name TEXT,
+      last_name TEXT,
+      client_id INTEGER REFERENCES clients(id),
+      lead_id INTEGER REFERENCES leads(id),
+      conversation_state TEXT DEFAULT 'idle',
+      state_data JSONB DEFAULT '{}',
+      last_message_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- TELEGRAM MESSAGES
+    CREATE TABLE IF NOT EXISTS telegram_messages (
+      id SERIAL PRIMARY KEY,
+      conversation_id INTEGER NOT NULL REFERENCES telegram_conversations(id),
+      direction TEXT NOT NULL CHECK(direction IN ('incoming','outgoing')),
+      message_text TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- ADD telegram_chat_id to users (for staff link)
+    DO $$ BEGIN
+      ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+
     -- AUDIT LOG
     CREATE TABLE IF NOT EXISTS audit_log (
       id SERIAL PRIMARY KEY,
@@ -249,6 +292,10 @@ const createSchema = async (pool) => {
     CREATE INDEX IF NOT EXISTS idx_ig_conversations_client ON instagram_conversations(client_id);
     CREATE INDEX IF NOT EXISTS idx_ig_messages_conversation ON instagram_messages(conversation_id);
     CREATE INDEX IF NOT EXISTS idx_ig_messages_mid ON instagram_messages(ig_message_id);
+    CREATE INDEX IF NOT EXISTS idx_tg_conversations_chat ON telegram_conversations(chat_id);
+    CREATE INDEX IF NOT EXISTS idx_tg_conversations_client ON telegram_conversations(client_id);
+    CREATE INDEX IF NOT EXISTS idx_tg_messages_conversation ON telegram_messages(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_users_telegram_chat ON users(telegram_chat_id);
   `);
 };
 

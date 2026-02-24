@@ -67,6 +67,9 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
       SELECT l.*, c.name as client_name FROM leads l LEFT JOIN clients c ON l.client_id = c.id WHERE l.id = $1
     `, [result.rows[0].id]);
     res.status(201).json(lead);
+
+    // Telegram notification (fire-and-forget)
+    try { require('../telegram/notifications').notifyNewLead(lead); } catch (e) {}
   } catch (err) {
     console.error('Create lead error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });

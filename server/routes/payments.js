@@ -75,6 +75,9 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
 
     const payment = await queryOne(`SELECT * FROM payments WHERE id = $1`, [paymentId]);
     res.status(201).json(payment);
+
+    // Telegram notification (fire-and-forget)
+    try { require('../telegram/notifications').notifyPaymentReceived(payment, booking); } catch (e) {}
   } catch (err) {
     console.error('POST /payments error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });

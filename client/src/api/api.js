@@ -104,4 +104,11 @@ export const api = {
   instagramConversation: (id) => request(`/instagram/conversations/${id}`),
   instagramReply: (id, text) => request(`/instagram/conversations/${id}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
   instagramUnreadCount: () => request('/instagram/unread-count'),
+
+  // Telegram Bot
+  telegramStatus: () => request('/telegram/status'),
+  telegramSetup: (token) => request('/telegram/setup', { method: 'POST', body: JSON.stringify({ token }) }),
+  telegramUpdateWelcome: (welcome_message) => request('/telegram/welcome', { method: 'PUT', body: JSON.stringify({ welcome_message }) }),
+  telegramDisconnect: () => request('/telegram/disconnect', { method: 'DELETE' }),
+  telegramConversations: () => request('/telegram/conversations'),
 };

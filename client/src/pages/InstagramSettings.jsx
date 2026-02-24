@@ -95,6 +95,12 @@ export default function InstagramSettings() {
         >
           Instagram DM
         </Link>
+        <Link
+          to="/settings/telegram"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+        >
+          Telegram Bot
+        </Link>
       </div>
 
       {message && (

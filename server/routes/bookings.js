@@ -215,7 +215,11 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
     ]);
 
     const booking = await queryOne(`SELECT * FROM bookings WHERE id = $1`, [bookingId]);
-    res.status(201).json(await enrichBooking(booking));
+    const enriched = await enrichBooking(booking);
+    res.status(201).json(enriched);
+
+    // Telegram notification (fire-and-forget)
+    try { require('../telegram/notifications').notifyNewBooking(booking); } catch (e) {}
   } catch (err) {
     console.error('POST /bookings error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });

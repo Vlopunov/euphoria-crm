@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../api/api';
 import { Card, PageHeader, Button, Badge } from '../components/UI';
 import { Calendar, RefreshCw, Link2, Unlink, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -120,6 +120,28 @@ export default function GoogleSettings() {
         title="Настройки"
         subtitle="Интеграция с Google Calendar"
       />
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <Link
+          to="/settings/google"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-primary-600 text-white"
+        >
+          Google Calendar
+        </Link>
+        <Link
+          to="/settings/instagram"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+        >
+          Instagram DM
+        </Link>
+        <Link
+          to="/settings/telegram"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+        >
+          Telegram Bot
+        </Link>
+      </div>
 
       {message && (
         <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm flex items-center gap-2">
