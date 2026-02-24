@@ -156,7 +156,7 @@ router.get('/:id', async (req, res) => {
 // POST create booking
 router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
   try {
-    const { client_id, lead_id, booking_date, start_time, end_time, guest_count, event_type, hourly_rate, comment } = req.body;
+    const { client_id, lead_id, booking_date, start_time, end_time, guest_count, event_type, hourly_rate, comment, deposit_amount: custom_deposit } = req.body;
     if (!client_id || !booking_date || !start_time || !end_time) {
       return res.status(400).json({ error: 'Клиент, дата и время обязательны' });
     }
@@ -177,7 +177,7 @@ router.post('/', authorize('owner', 'admin', 'manager'), async (req, res) => {
 
     const rate = hourly_rate || 35;
     const rental_cost = rate * hours;
-    const deposit_amount = rate; // задаток = стоимость 1 часа аренды
+    const deposit_amount = custom_deposit ?? rate; // задаток = кастомная сумма или стоимость 1 часа
 
     const result = await query(`
       INSERT INTO bookings (client_id, lead_id, booking_date, start_time, end_time, hours, guest_count, event_type, hourly_rate, rental_cost, deposit_amount, total_amount, status, comment, created_by)
@@ -211,7 +211,7 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
     const existing = await queryOne(`SELECT * FROM bookings WHERE id = $1`, [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Бронь не найдена' });
 
-    const { client_id, booking_date, start_time, end_time, guest_count, event_type, hourly_rate, status, comment } = req.body;
+    const { client_id, booking_date, start_time, end_time, guest_count, event_type, hourly_rate, status, comment, deposit_amount: custom_deposit } = req.body;
 
     const bDate = booking_date || existing.booking_date;
     const sTime = start_time || existing.start_time;
@@ -233,7 +233,7 @@ router.put('/:id', authorize('owner', 'admin', 'manager'), async (req, res) => {
 
     const rate = hourly_rate || existing.hourly_rate;
     const rental_cost = rate * hours;
-    const deposit_amount = rate;
+    const deposit_amount = custom_deposit ?? existing.deposit_amount ?? rate;
 
     await query(`
       UPDATE bookings SET client_id=$1, booking_date=$2, start_time=$3, end_time=$4, hours=$5, guest_count=$6, event_type=$7, hourly_rate=$8, rental_cost=$9, deposit_amount=$10, total_amount=$11, status=$12, comment=$13, updated_at=NOW()
