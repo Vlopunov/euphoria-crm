@@ -187,7 +187,7 @@ router.get('/auth', authenticate, (req, res) => {
   const url = `https://www.facebook.com/v21.0/dialog/oauth?` +
     `client_id=${appId}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=instagram_manage_messages,pages_messaging,pages_show_list,instagram_basic` +
+    `&scope=instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata` +
     `&state=${req.user.id}`;
 
   res.json({ url });
