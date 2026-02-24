@@ -71,15 +71,13 @@ async function createBot() {
   // ---- Client main menu ----
   function clientMenu(welcomeMsg) {
     const text = welcomeMsg || 'Добро пожаловать в Эйфория Room! \u{1F389}\n\nМы — уютное пространство для ваших мероприятий в Минске.\n\nВыберите, что вас интересует:';
-    return {
-      text,
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('📅 Свободные даты', 'check_availability')],
-        [Markup.button.callback('💰 Цены и тарифы', 'pricing_info')],
-        [Markup.button.callback('📝 Оставить заявку', 'submit_request')],
-        [Markup.button.callback('📞 Связаться с менеджером', 'contact_manager')],
-      ]),
-    };
+    const extra = Markup.inlineKeyboard([
+      [Markup.button.callback('📅 Свободные даты', 'check_availability')],
+      [Markup.button.callback('💰 Цены и тарифы', 'pricing_info')],
+      [Markup.button.callback('📝 Оставить заявку', 'submit_request')],
+      [Markup.button.callback('📞 Связаться с менеджером', 'contact_manager')],
+    ]);
+    return { text, extra };
   }
 
   // ==========================================
@@ -105,7 +103,7 @@ async function createBot() {
       } else {
         const config = await getConfig();
         const menu = clientMenu(config?.welcome_message);
-        await ctx.reply(menu.text, menu.reply_markup ? { reply_markup: menu.reply_markup.reply_markup } : {});
+        await ctx.reply(menu.text, menu.extra);
       }
 
       await saveMessage(conv.id, 'incoming', '/start');
@@ -388,7 +386,7 @@ async function createBot() {
     try {
       const config = await getConfig();
       const menu = clientMenu(config?.welcome_message);
-      await ctx.reply(menu.text, menu.reply_markup ? { reply_markup: menu.reply_markup.reply_markup } : {});
+      await ctx.reply(menu.text, menu.extra);
     } catch (err) {
       console.error('[TG Bot] /menu error:', err.message);
     }
@@ -526,7 +524,7 @@ async function createBot() {
       await ctx.answerCbQuery();
       const config = await getConfig();
       const menu = clientMenu(config?.welcome_message);
-      await ctx.editMessageText(menu.text, menu.reply_markup ? { reply_markup: menu.reply_markup.reply_markup } : {});
+      await ctx.editMessageText(menu.text, menu.extra);
     } catch (err) {
       console.error('[TG Bot] back_to_menu error:', err.message);
     }
@@ -703,7 +701,7 @@ async function createBot() {
       await setState(ctx.chat.id, 'idle', {});
       const config = await getConfig();
       const menu = clientMenu(config?.welcome_message);
-      await ctx.editMessageText(menu.text, menu.reply_markup ? { reply_markup: menu.reply_markup.reply_markup } : {});
+      await ctx.editMessageText(menu.text, menu.extra);
     } catch (err) {
       console.error('[TG Bot] cancel_request error:', err.message);
     }
@@ -790,12 +788,11 @@ async function createBot() {
           const staff = await isStaff(ctx.chat.id);
           if (!staff) {
             // Save as a message to manager
-            const config = await getConfig();
-            const menu = clientMenu(config?.welcome_message);
+            const menu = clientMenu();
             await ctx.reply(
               '💬 Ваше сообщение получено! Менеджер свяжется с вами.\n\n' +
               'А пока выберите, что вас интересует:',
-              menu.reply_markup ? { reply_markup: menu.reply_markup.reply_markup } : {}
+              menu.extra
             );
           }
           break;

@@ -25,11 +25,20 @@ router.post('/webhook', async (req, res) => {
 
   try {
     const bot = getBot();
-    if (bot) {
-      await bot.handleUpdate(req.body);
+    if (!bot) {
+      console.warn('[TG Webhook] No bot instance — reinitializing...');
+      try {
+        await createBot();
+        const newBot = getBot();
+        if (newBot) await newBot.handleUpdate(req.body);
+      } catch (initErr) {
+        console.error('[TG Webhook] Reinit failed:', initErr.message);
+      }
+      return;
     }
+    await bot.handleUpdate(req.body);
   } catch (err) {
-    console.error('[TG Webhook] Error:', err.message);
+    console.error('[TG Webhook] Error:', err.message, err.stack);
   }
 });
 
@@ -194,6 +203,24 @@ async function initBot() {
     if (config) {
       await createBot();
       console.log(`🤖 Telegram бот инициализирован: @${config.bot_username}`);
+
+      // Verify/re-set webhook on startup (handles Render cold starts)
+      try {
+        const baseUrl = process.env.RENDER_EXTERNAL_HOSTNAME
+          ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`
+          : process.env.BASE_URL || null;
+        if (baseUrl) {
+          const expectedWebhook = `${baseUrl}/api/telegram/webhook`;
+          if (config.webhook_url !== expectedWebhook) {
+            const tempBot = new Telegraf(config.bot_token);
+            await tempBot.telegram.setWebhook(expectedWebhook, { drop_pending_updates: false });
+            await query('UPDATE telegram_bot_config SET webhook_url = $1 WHERE id = $2', [expectedWebhook, config.id]);
+            console.log(`[TG] Webhook updated: ${expectedWebhook}`);
+          }
+        }
+      } catch (whErr) {
+        console.warn('[TG] Webhook verify warning:', whErr.message);
+      }
     }
   } catch (err) {
     console.error('[TG] Init error:', err.message);
