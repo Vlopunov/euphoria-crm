@@ -5,18 +5,18 @@ import { formatMoney, formatDateShort, SOURCE_LABELS } from '../components/helpe
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
+function toLocalISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function getMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    date_from: from.toISOString().split('T')[0],
-    date_to: to.toISOString().split('T')[0],
+    date_from: toLocalISO(from),
+    date_to: toLocalISO(to),
   };
-}
-
-function formatISO(date) {
-  return date.toISOString().split('T')[0];
 }
 
 export default function Reports() {
@@ -74,8 +74,8 @@ export default function Reports() {
         return;
     }
 
-    setDateFrom(formatISO(from));
-    setDateTo(formatISO(to));
+    setDateFrom(toLocalISO(from));
+    setDateTo(toLocalISO(to));
   }
 
   const chartData = (data?.dailyRevenue || []).map(d => ({

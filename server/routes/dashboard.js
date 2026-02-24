@@ -191,7 +191,7 @@ router.get('/reports', async (req, res) => {
       FROM expenses e
       JOIN expense_categories ec ON e.category_id = ec.id
       WHERE e.expense_date BETWEEN $1 AND $2 AND e.is_archived = 0
-      GROUP BY e.category_id ORDER BY total DESC
+      GROUP BY e.category_id, ec.name ORDER BY total DESC
     `, [from, to]);
 
     const totalExpensesRow = await queryOne(`
